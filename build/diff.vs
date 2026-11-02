@@ -13,7 +13,7 @@ import (
 let ignoredTrees = ["proc", "sys", "dev", "run", ".vertex"]
 let ignoredFiles: Set<string> = ["etc/resolv.conf", "etc/hosts", "etc/hostname"]
 
-func ignored(_ path: string) -> bool {
+func ignored(path: string) -> bool {
     if ignoredFiles.contains(path) { return true }
     for t in ignoredTrees where path == t || path.hasPrefix(t + "/") {
         return true
@@ -21,7 +21,7 @@ func ignored(_ path: string) -> bool {
     return false
 }
 
-func kindOf(_ t: tar.FileType) -> rootfs.Kind? {
+func kindOf(t: tar.FileType) -> rootfs.Kind? {
     switch t {
     case .regular, .contiguous: return rootfs.Kind.file
     case .directory: return rootfs.Kind.directory
@@ -38,7 +38,7 @@ func kindOf(_ t: tar.FileType) -> rootfs.Kind? {
 /// path: a directory by its owner and mode (its mtime moves whenever
 /// something in it does), anything else by those and its size, mtime and
 /// target.
-func differs(_ h: tar.Header, _ kind: rootfs.Kind, _ old: rootfs.Entry) -> bool {
+func differs(h: tar.Header, kind: rootfs.Kind, old: rootfs.Entry) -> bool {
     if old.Kind != kind { return true }
     if old.Mode != (uint32(truncatingIfNeeded: h.Mode) & 0o7777) { return true }
     if old.Uid != uint32(truncatingIfNeeded: h.Uid) || old.Gid != uint32(truncatingIfNeeded: h.Gid) { return true }
@@ -92,7 +92,7 @@ public func Diff(parent: rootfs.Plan, tree: fs.Path) throws -> [uint8] {
 
     // Every directory that holds a change, so the layer unpacks in order.
     var needDirs = Set<string>()
-    func addParents(_ path: string) {
+    func addParents(path: string) {
         var p = path
         while let slash = p.lastIndex(of: "/") {
             p = string(p[..<slash])

@@ -21,7 +21,7 @@ import (
 
 var failures: int32 = 0
 
-func check(_ ok: bool, _ what: string) {
+func check(ok: bool, what: string) {
     if ok {
         print("ok    \(what)")
     } else {
@@ -43,7 +43,7 @@ func testDigest() {
 }
 
 func testReference() {
-    func full(_ s: string) -> string { (try? reference.Reference.Parse(s))?.description ?? "error" }
+    func full(s: string) -> string { (try? reference.Reference.Parse(s))?.description ?? "error" }
     check(full("alpine") == "docker.io/library/alpine:latest", "a bare name is Docker Hub's library")
     check(full("alpine:3.20") == "docker.io/library/alpine:3.20", "a tag")
     check(full("user/app") == "docker.io/user/app:latest", "a user repository")
@@ -90,7 +90,7 @@ func testSpec() {
 }
 
 /// A gzipped tar of entries: (name, type, data, linkname).
-func layer(_ entries: [(string, tar.FileType, string, string)]) throws -> [uint8] {
+func layer(entries: [(string, tar.FileType, string, string)]) throws -> [uint8] {
     var w = tar.Writer(io.Cursor())
     for (name, t, data, link) in entries {
         let bytes = [uint8](data.utf8)
@@ -110,7 +110,7 @@ final class Collect: rootfs.Sink {
     var files: [string: string] = [:]
     var kinds: [string: rootfs.Kind] = [:]
     var finished = false
-    func Add(_ e: rootfs.Entry, _ data: [uint8]) throws {
+    func Add(e: rootfs.Entry, data: [uint8]) throws {
         kinds[e.Path] = e.Kind
         if e.Kind == rootfs.Kind.file {
             files[e.Path] = string(decoding: data, as: UTF8.self)
@@ -119,7 +119,7 @@ final class Collect: rootfs.Sink {
     func Finish() throws { finished = true }
 }
 
-func testStoreAndRootfs(_ tmp: fs.Path) {
+func testStoreAndRootfs(tmp: fs.Path) {
     do {
         let st = try store.Store(root: (tmp / "store").String())
         let d = try st.WriteBlob([uint8]("hello".utf8))

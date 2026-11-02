@@ -68,7 +68,7 @@ public struct File {
 }
 
 /// Where a fetched file is on disk, if the store has it.
-public func Path(_ f: File, in st: store.Store) -> fs.Path? {
+public func Path(f: File, in st: store.Store) -> fs.Path? {
     guard let d = try? digest.Digest.Parse(f.Digest), st.HasBlob(d) else { return nil }
     return st.BlobPath(d)
 }
@@ -76,7 +76,7 @@ public func Path(_ f: File, in st: store.Store) -> fs.Path? {
 /// Makes sure the store has `f`, downloading and checking it if not, and
 /// returns where it is.
 @discardableResult
-public func Fetch(_ f: File, into st: store.Store, progress: (int64, int64) -> Void = { _, _ in }) async throws -> fs.Path {
+public func Fetch(f: File, into st: store.Store, progress: (int64, int64) -> Void = { _, _ in }) async throws -> fs.Path {
     let d = try digest.Digest.Parse(f.Digest)
     if !st.HasBlob(d) {
         try await download(f.URL, d, f.Size, st, progress)
@@ -101,8 +101,8 @@ public func Fetch(_ f: File, into st: store.Store, progress: (int64, int64) -> V
 }
 
 /// Streams `address` into the store, following redirects, and checks it.
-func download(_ address: string, _ d: digest.Digest, _ size: int64, _ st: store.Store,
-              _ progress: (int64, int64) -> Void) async throws {
+func download(address: string, d: digest.Digest, size: int64, st: store.Store,
+              progress: (int64, int64) -> Void) async throws {
     var cfg = http.ClientConfig(enabledVersions: [http.HttpVersion.http1_1], timeoutMs: 30000)
     cfg.ReadTimeoutMs = 60000
     let client = http.Client(config: cfg)
@@ -184,7 +184,7 @@ public enum Catalog {
 
     public static var All: [File] { [alpineKernel, alpineInitramfs, alpineModloop, alpineBusybox] }
 
-    public static func Named(_ name: string) -> File? {
+    public static func Named(name: string) -> File? {
         for f in All where f.Name == name { return f }
         return nil
     }

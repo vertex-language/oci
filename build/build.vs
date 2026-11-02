@@ -102,7 +102,7 @@ public final class Builder {
     }
 
     /// Builds `o` and returns the image, named o.Tag if given.
-    public func Build(_ o: Options) async throws -> store.Image {
+    public func Build(o: Options) async throws -> store.Image {
         let path = o.Dockerfile ?? (o.Context + "/Dockerfile")
         let file = try dockerfile.Parse(try fs.ReadText(fs.Path(path)))
         let ignore = Ignore(try? fs.ReadText(fs.Path(o.Context + "/.dockerignore")))
@@ -136,7 +136,7 @@ public final class Builder {
     }
 
     /// The state FROM starts with: a stage before, nothing, or an image.
-    func from(_ name: string, _ platform: spec.Platform) async throws -> State {
+    func from(name: string, platform: spec.Platform) async throws -> State {
         if let prev = stages[name.lowercased()] {
             let s = State(config: prev.config)
             s.layers = prev.layers
@@ -164,8 +164,8 @@ public final class Builder {
         return s
     }
 
-    func step(_ ins: dockerfile.Instruction, _ s: State, _ o: Options, _ ignore: Ignore,
-              _ globals: [string: string]) async throws {
+    func step(ins: dockerfile.Instruction, s: State, o: Options, ignore: Ignore,
+              globals: [string: string]) async throws {
         let expand = { (t: string) -> string in dockerfile.Expand(t, s.vars) }
         log("  \(ins.Command) \(ins.Rest)")
         switch ins.Command {
@@ -255,7 +255,7 @@ public final class Builder {
     }
 
     /// HEALTHCHECK's config value: NONE, or a Test with the flags' timings.
-    func healthcheck(_ ins: dockerfile.Instruction, _ s: State) throws -> json.Value? {
+    func healthcheck(ins: dockerfile.Instruction, s: State) throws -> json.Value? {
         let rest = dockerfile.Expand(ins.Rest, s.vars)
         if rest.uppercased() == "NONE" {
             var o = json.Object()
@@ -291,7 +291,7 @@ public final class Builder {
 
     /// Runs the ONBUILD triggers an image carries, as if they followed
     /// the FROM, and clears them from the new image.
-    func trigger(_ s: State, _ o: Options, _ ignore: Ignore, _ globals: [string: string]) async throws {
+    func trigger(s: State, o: Options, ignore: Ignore, globals: [string: string]) async throws {
         let triggers = s.config.OnBuild
         if triggers.isEmpty { return }
         s.config.OnBuild = []
@@ -303,7 +303,7 @@ public final class Builder {
     }
 
     /// A history entry for an instruction.
-    func note(_ s: State, _ ins: dockerfile.Instruction, empty: bool) {
+    func note(s: State, ins: dockerfile.Instruction, empty: bool) {
         var h = json.Object()
         h["created_by"] = .string("\(ins.Command) \(ins.Rest)")
         h["comment"] = .string("vertex-oci")
@@ -312,7 +312,7 @@ public final class Builder {
     }
 
     /// Adds `tarBytes` (uncompressed) as a layer.
-    func addLayer(_ s: State, _ tarBytes: [uint8], _ ins: dockerfile.Instruction?) throws {
+    func addLayer(s: State, tarBytes: [uint8], ins: dockerfile.Instruction?) throws {
         let diffId = digest.Digest.Of(tarBytes)
         let gz = gzip.Compress(tarBytes)
         let d = try st.WriteBlob(gz)
@@ -325,7 +325,7 @@ public final class Builder {
     }
 
     /// The tree the layers so far make.
-    func plan(_ s: State) throws -> rootfs.Plan {
+    func plan(s: State) throws -> rootfs.Plan {
         if let p = s.plan { return p }
         var ls: [rootfs.Layer] = []
         for l in s.layers {
@@ -337,7 +337,7 @@ public final class Builder {
     }
 
     /// A WORKDIR no RUN made: a layer with the directory.
-    func flushWorkdir(_ s: State) throws {
+    func flushWorkdir(s: State) throws {
         guard let dir = s.pendingWorkdir, dir != "/" else { return }
         s.pendingWorkdir = nil
         let rel = (try? rootfs.Clean(dir)) ?? dir
@@ -354,7 +354,7 @@ public final class Builder {
         try addLayer(s, w.Inner.Bytes, nil)
     }
 
-    func run(_ ins: dockerfile.Instruction, _ s: State) async throws {
+    func run(ins: dockerfile.Instruction, s: State) async throws {
         guard let ex = executor else { throw BuildError.noExecutor(line: ins.Line) }
         if ins.Flags["mount"] != nil {
             log("    (RUN --mount is not supported; running without it)")
@@ -384,7 +384,7 @@ public final class Builder {
     // MARK: COPY and ADD
 
     /// Where a destination is, absolute, without the leading "/".
-    func destination(_ d: string, _ s: State) -> string {
+    func destination(d: string, s: State) -> string {
         var p = d
         if !p.hasPrefix("/") {
             p = (s.config.WorkingDir.isEmpty ? "/" : s.config.WorkingDir) + "/" + p
@@ -392,7 +392,7 @@ public final class Builder {
         return (try? rootfs.Clean(p)) ?? p
     }
 
-    func copy(_ ins: dockerfile.Instruction, _ s: State, _ o: Options, _ ignore: Ignore) async throws {
+    func copy(ins: dockerfile.Instruction, s: State, o: Options, ignore: Ignore) async throws {
         var words = ins.Words.map { dockerfile.Expand($0, s.vars) }
         if words.count < 2 {
             throw BuildError.badInstruction(line: ins.Line, message: "\(ins.Command) needs a source and a destination")
@@ -405,7 +405,7 @@ public final class Builder {
         var w = tar.Writer(io.Cursor())
         var made = Set<string>()
 
-        func parents(_ path: string) throws {
+        func parents(path: string) throws {
             var at = ""
             let parts = path.split(separator: "/").map { string($0) }
             for part in parts.dropLast() {
@@ -417,7 +417,7 @@ public final class Builder {
             }
         }
 
-        func put(_ h: tar.Header, _ data: [uint8]) throws {
+        func put(h: tar.Header, data: [uint8]) throws {
             try parents(h.Name)
             var out = h
             out.Uid = owner.0
@@ -494,7 +494,7 @@ public final class Builder {
         try addLayer(s, w.Inner.Bytes, ins)
     }
 
-    func download(_ address: string) async throws -> [uint8] {
+    func download(address: string) async throws -> [uint8] {
         var cfg = http.ClientConfig(enabledVersions: [http.HttpVersion.http1_1, http.HttpVersion.http2])
         cfg.MaxRedirects = 10
         var c = http.Client(config: cfg)
@@ -508,7 +508,7 @@ public final class Builder {
 
     // MARK: Committing
 
-    func commit(_ s: State, _ o: Options) throws -> store.Image {
+    func commit(s: State, o: Options) throws -> store.Image {
         var cfg = s.config
         var raw = (try? json.Parse(bytes: cfg.Encode()))?.Object ?? json.Object()
         raw["history"] = .array(s.history)
@@ -532,7 +532,7 @@ public final class Builder {
 }
 
 /// "30s", "1m30s", "500ms" as nanoseconds.
-func duration(_ text: string) -> int64? {
+func duration(text: string) -> int64? {
     var total: int64 = 0
     var num = ""
     var unit = ""
@@ -565,7 +565,7 @@ func duration(_ text: string) -> int64? {
     return total
 }
 
-func trimSpaces(_ s: string) -> string {
+func trimSpaces(s: string) -> string {
     var b = [uint8](s.utf8)
     while let f = b.first, f == 0x20 || f == 0x09 { b.removeFirst() }
     while let l = b.last, l == 0x20 || l == 0x09 { b.removeLast() }
@@ -573,20 +573,20 @@ func trimSpaces(_ s: string) -> string {
 }
 
 /// `--chown=uid[:gid]`, numbers or root; 0:0 otherwise.
-func ownerOf(_ flag: string?) -> (int, int) {
+func ownerOf(flag: string?) -> (int, int) {
     guard let f = flag else { return (0, 0) }
     let parts = f.split(separator: ":").map { string($0) }
-    func id(_ s: string) -> int { s == "root" ? 0 : (int(s) ?? 0) }
+    func id(s: string) -> int { s == "root" ? 0 : (int(s) ?? 0) }
     let u = parts.isEmpty ? 0 : id(parts[0])
     return (u, parts.count > 1 ? id(parts[1]) : u)
 }
 
-func isTar(_ name: string) -> bool {
+func isTar(name: string) -> bool {
     name.hasSuffix(".tar") || name.hasSuffix(".tar.gz") || name.hasSuffix(".tgz")
 }
 
 /// A tar header for a file of this machine's, put at `name`.
-func hostHeader(_ name: string, _ m: fs.FileMetadata, _ size: int, _ link: string) -> tar.Header {
+func hostHeader(name: string, m: fs.FileMetadata, size: int, link: string) -> tar.Header {
     let mode = int64((m.Unix?.Mode ?? 0o644) & 0o7777)
     if m.IsDir() {
         return tar.Header(name: name, mode: mode, typeflag: .directory, modTime: m.Modified.UnixSeconds)
@@ -598,7 +598,7 @@ func hostHeader(_ name: string, _ m: fs.FileMetadata, _ size: int, _ link: strin
 }
 
 /// A tar header for an entry of a merged tree, put at `name`.
-func entryHeader(_ e: rootfs.Entry, _ name: string, _ size: int) -> tar.Header {
+func entryHeader(e: rootfs.Entry, name: string, size: int) -> tar.Header {
     var t = tar.FileType.regular
     switch e.Kind {
     case .directory: t = .directory
@@ -615,7 +615,7 @@ func entryHeader(_ e: rootfs.Entry, _ name: string, _ size: int) -> tar.Header {
 }
 
 /// Unpacks a (perhaps gzipped) tar's entries under `dest`.
-func untar(_ data: [uint8], _ name: string, _ dest: string, _ put: (tar.Header, [uint8]) throws -> Void) throws {
+func untar(data: [uint8], name: string, dest: string, put: (tar.Header, [uint8]) throws -> Void) throws {
     let bytes = (data.count > 2 && data[0] == 0x1F && data[1] == 0x8B) ? try gzip.Decompress(data) : data
     var r = tar.Reader(io.Cursor(bytes))
     while let h = try r.Next() {
@@ -637,7 +637,7 @@ final class Collect: rootfs.Sink {
         self.prefix = prefix
     }
 
-    func Add(_ e: rootfs.Entry, _ data: [uint8]) throws {
+    func Add(e: rootfs.Entry, data: [uint8]) throws {
         if e.Path == prefix || e.Path.hasPrefix(prefix + "/") {
             Entries.append((e, data))
         }
@@ -647,6 +647,6 @@ final class Collect: rootfs.Sink {
 }
 
 /// A file's SHA-256, for content that wants naming.
-func sha(_ b: [uint8]) -> string {
+func sha(b: [uint8]) -> string {
     sha256.ToHex(sha256.Sum256(b))
 }

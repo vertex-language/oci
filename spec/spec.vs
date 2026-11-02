@@ -22,10 +22,10 @@ public enum MediaType {
     /// What a fetched file is stored as: see oci/fetch.
     public static let file = "application/octet-stream"
 
-    public static func IsIndex(_ t: string) -> bool { t == index || t == dockerList }
-    public static func IsManifest(_ t: string) -> bool { t == manifest || t == dockerManifest }
-    public static func IsGzipLayer(_ t: string) -> bool { t == layerGzip || t == dockerLayerGzip }
-    public static func IsZstdLayer(_ t: string) -> bool { t == layerZstd }
+    public static func IsIndex(t: string) -> bool { t == index || t == dockerList }
+    public static func IsManifest(t: string) -> bool { t == manifest || t == dockerManifest }
+    public static func IsGzipLayer(t: string) -> bool { t == layerGzip || t == dockerLayerGzip }
+    public static func IsZstdLayer(t: string) -> bool { t == layerZstd }
 }
 
 public enum ImageError: Error, CustomStringConvertible {
@@ -56,7 +56,7 @@ public struct Platform: Equatable, CustomStringConvertible {
     }
 
     /// "linux/arm64/v8" or "linux/amd64".
-    public static func Parse(_ text: string) -> Platform {
+    public static func Parse(text: string) -> Platform {
         let p = text.split(separator: "/").map { string($0) }
         return Platform(os: p.count > 0 ? p[0] : "linux", architecture: p.count > 1 ? p[1] : "arm64",
                         variant: p.count > 2 ? p[2] : "")
@@ -64,7 +64,7 @@ public struct Platform: Equatable, CustomStringConvertible {
 
     /// Whether an image for `other` runs here: OS and CPU agree, and the
     /// variant does where both name one.
-    public func Matches(_ other: Platform) -> bool {
+    public func Matches(other: Platform) -> bool {
         if OS != other.OS || Architecture != other.Architecture { return false }
         return Variant.isEmpty || other.Variant.isEmpty || Variant == other.Variant
     }
@@ -93,7 +93,7 @@ public struct Descriptor: Equatable {
         ArtifactType = artifactType
     }
 
-    public static func FromJson(_ v: json.Value) throws -> Descriptor {
+    public static func FromJson(v: json.Value) throws -> Descriptor {
         guard let d = v["digest"]?.String, let size = v["size"]?.Int else {
             throw ImageError.malformed("a descriptor needs digest and size")
         }
@@ -142,7 +142,7 @@ public struct Manifest {
         ArtifactType = artifactType
     }
 
-    public static func Parse(_ bytes: [uint8]) throws -> Manifest {
+    public static func Parse(bytes: [uint8]) throws -> Manifest {
         let v = try json.Parse(bytes: bytes)
         guard let c = v["config"] else { throw ImageError.malformed("a manifest needs a config") }
         var layers: [Descriptor] = []
@@ -178,7 +178,7 @@ public struct Index {
         Manifests = manifests
     }
 
-    public static func Parse(_ bytes: [uint8]) throws -> Index {
+    public static func Parse(bytes: [uint8]) throws -> Index {
         let v = try json.Parse(bytes: bytes)
         var ms: [Descriptor] = []
         for m in v["manifests"]?.Array ?? [] {
@@ -196,7 +196,7 @@ public struct Index {
     }
 
     /// The manifest for `platform`, preferring an exact variant match.
-    public func Select(_ platform: Platform) -> Descriptor? {
+    public func Select(platform: Platform) -> Descriptor? {
         var fallback: Descriptor? = nil
         for m in Manifests {
             guard let p = m.Platform, p.Matches(platform) else { continue }
@@ -249,7 +249,7 @@ public struct Config {
         DiffIds = []
     }
 
-    public static func Parse(_ bytes: [uint8]) throws -> Config {
+    public static func Parse(bytes: [uint8]) throws -> Config {
         let v = try json.Parse(bytes: bytes)
         guard let o = v.Object else { throw ImageError.malformed("a config is an object") }
         var c = Config()
@@ -305,7 +305,7 @@ public struct Config {
     }
 
     /// An environment variable's value, or nil.
-    public func Getenv(_ name: string) -> string? {
+    public func Getenv(name: string) -> string? {
         for e in Env where e.hasPrefix(name + "=") {
             return string(e.dropFirst(name.count + 1))
         }
@@ -313,7 +313,7 @@ public struct Config {
     }
 
     /// Sets an environment variable, replacing an earlier value.
-    public mutating func Setenv(_ name: string, _ value: string) {
+    public mutating func Setenv(name: string, value: string) {
         Env = Env.filter { !$0.hasPrefix(name + "=") }
         Env.append(name + "=" + value)
     }
@@ -322,7 +322,7 @@ public struct Config {
     public var Command: [string] { Entrypoint + Cmd }
 }
 
-func strings(_ v: json.Value?) -> [string] {
+func strings(v: json.Value?) -> [string] {
     var out: [string] = []
     for e in v?.Array ?? [] {
         if let s = e.String { out.append(s) }
@@ -330,7 +330,7 @@ func strings(_ v: json.Value?) -> [string] {
     return out
 }
 
-func stringMap(_ v: json.Value?) -> [string: string] {
+func stringMap(v: json.Value?) -> [string: string] {
     var out: [string: string] = [:]
     for (k, e) in v?.Object?.Members ?? [] {
         if let s = e.String { out[k] = s }
@@ -338,7 +338,7 @@ func stringMap(_ v: json.Value?) -> [string: string] {
     return out
 }
 
-func mapValue(_ m: [string: string]) -> json.Value {
+func mapValue(m: [string: string]) -> json.Value {
     var o = json.Object()
     for k in m.keys.sorted() { o[k] = .string(m[k]!) }
     return .object(o)

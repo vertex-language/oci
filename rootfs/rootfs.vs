@@ -85,7 +85,7 @@ public struct Entry {
 /// What receives the merged tree.
 public protocol Sink: AnyObject {
     /// One entry. `data` is a file's contents; empty for anything else.
-    func Add(_ e: Entry, _ data: [uint8]) throws
+    func Add(e: Entry, data: [uint8]) throws
     /// Called once every entry has been added.
     func Finish() throws
 }
@@ -127,14 +127,14 @@ public struct LayerStream: io.Reader {
 }
 
 /// Whether a file starts with gzip's magic; it is left at its start.
-func isGzip(_ f: fs.File) -> bool {
+func isGzip(f: fs.File) -> bool {
     var b = [uint8](repeating: 0, count: 2)
     let n = (try? f.Read(into: &b, at: 0)) ?? 0
     return n == 2 && b[0] == 0x1F && b[1] == 0x8B
 }
 
 /// Whether a file starts with zstd's magic.
-func isZstd(_ f: fs.File) -> bool {
+func isZstd(f: fs.File) -> bool {
     var b = [uint8](repeating: 0, count: 4)
     let n = (try? f.Read(into: &b, at: 0)) ?? 0
     return n == 4 && b[0] == 0x28 && b[1] == 0xB5 && b[2] == 0x2F && b[3] == 0xFD
@@ -162,7 +162,7 @@ public func Layers(of img: store.Image, in st: store.Store) throws -> [Layer] {
 
 /// A path from a tar as a path in the tree: no "./", no leading or
 /// trailing "/", and nothing that climbs out. "" is the root itself.
-public func Clean(_ name: string) throws -> string {
+public func Clean(name: string) throws -> string {
     var parts: [string] = []
     for p in name.split(separator: "/") {
         let s = string(p)
@@ -173,7 +173,7 @@ public func Clean(_ name: string) throws -> string {
     return parts.joined(separator: "/")
 }
 
-func kindOf(_ t: tar.FileType) -> Kind? {
+func kindOf(t: tar.FileType) -> Kind? {
     switch t {
     case .regular, .contiguous: return Kind.file
     case .directory: return Kind.directory
@@ -205,7 +205,7 @@ public final class Plan {
     public var Count: int { entries.count }
 
     /// The entry at a path, if the tree has one.
-    public func Lookup(_ path: string) -> Entry? {
+    public func Lookup(path: string) -> Entry? {
         entries[(try? Clean(path)) ?? path]
     }
 
@@ -228,7 +228,7 @@ public final class Plan {
     }
 
     /// Removes `path` and everything under it that came from below `layer`.
-    func remove(_ path: string, below layer: int, keepSelf: bool) {
+    func remove(path: string, below layer: int, keepSelf: bool) {
         let prefix = path.isEmpty ? "" : path + "/"
         var doomed: [string] = []
         for (k, e) in entries where e.Layer < layer {
@@ -239,7 +239,7 @@ public final class Plan {
         for k in doomed { entries[k] = nil }
     }
 
-    func apply(_ h: tar.Header, layer: int) throws {
+    func apply(h: tar.Header, layer: int) throws {
         let path = try Clean(h.Name)
         if path.isEmpty { return }
         let slash = path.lastIndex(of: "/")
@@ -305,7 +305,7 @@ public final class Plan {
 }
 
 /// Reads the layers' headers and works out the tree they make.
-public func Merge(_ layers: [Layer]) throws -> Plan {
+public func Merge(layers: [Layer]) throws -> Plan {
     let plan = Plan(layers: layers)
     for (i, layer) in layers.enumerated() {
         var r = tar.Reader(try LayerStream(path: layer.Path, mediaType: layer.MediaType))
@@ -318,6 +318,6 @@ public func Merge(_ layers: [Layer]) throws -> Plan {
 }
 
 /// Merge for an image in a store.
-public func Merge(_ img: store.Image, in st: store.Store) throws -> Plan {
+public func Merge(img: store.Image, in st: store.Store) throws -> Plan {
     try Merge(try Layers(of: img, in: st))
 }

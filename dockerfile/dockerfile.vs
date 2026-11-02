@@ -60,7 +60,7 @@ public struct Dockerfile {
     public var EscapeChar: Character
 
     /// The stage named `name` (case-insensitive) or numbered by it.
-    public func FindStage(_ name: string) -> Stage? {
+    public func FindStage(name: string) -> Stage? {
         let n = name.lowercased()
         for s in Stages where s.Name == n {
             return s
@@ -80,7 +80,7 @@ let known: Set<string> = ["FROM", "RUN", "CMD", "LABEL", "MAINTAINER", "EXPOSE",
                           "ENTRYPOINT", "VOLUME", "USER", "WORKDIR", "ARG", "ONBUILD", "STOPSIGNAL",
                           "HEALTHCHECK", "SHELL"]
 
-func trimmed(_ s: string) -> string {
+func trimmed(s: string) -> string {
     var b = [uint8](s.utf8)
     while let f = b.first, f == 0x20 || f == 0x09 || f == 0x0D { b.removeFirst() }
     while let l = b.last, l == 0x20 || l == 0x09 || l == 0x0D || l == 0x0A { b.removeLast() }
@@ -88,7 +88,7 @@ func trimmed(_ s: string) -> string {
 }
 
 /// Parses `text`.
-public func Parse(_ text: string) throws -> Dockerfile {
+public func Parse(text: string) throws -> Dockerfile {
     let lines = text.split(separator: "\n", omittingEmptySubsequences: false).map { string($0) }
     var escape: Character = "\\"
     var i = 0
@@ -217,7 +217,7 @@ public func Parse(_ text: string) throws -> Dockerfile {
 
 /// Splits as sh splits words: whitespace separates, quotes and the
 /// escape character keep things together. Quotes are removed.
-public func SplitWords(_ s: string, escape: Character = "\\") -> [string] {
+public func SplitWords(s: string, escape: Character = "\\") -> [string] {
     var out: [string] = []
     var word = ""
     var inWord = false
@@ -264,7 +264,7 @@ public func SplitWords(_ s: string, escape: Character = "\\") -> [string] {
 /// `KEY=value` pairs, as ENV, LABEL and ARG write them; ENV's and
 /// LABEL's old `KEY value` form is one pair. ARG's bare `NAME` has no
 /// value.
-public func ArgPairs(_ rest: string) -> [(string, string?)] {
+public func ArgPairs(rest: string) -> [(string, string?)] {
     let words = SplitWords(rest)
     if words.count >= 2 && !words[0].contains("=") {
         // The legacy form: the first word is the key, the rest the value.
@@ -289,7 +289,7 @@ public func ArgPairs(_ rest: string) -> [(string, string?)] {
 /// Substitutes variables as Dockerfile instructions do: `$NAME`,
 /// `${NAME}`, `${NAME:-default}`, `${NAME:+alternative}`; `\$` is a
 /// dollar sign. Single-quoted text is left alone.
-public func Expand(_ s: string, _ vars: [string: string], escape: Character = "\\") -> string {
+public func Expand(s: string, vars: [string: string], escape: Character = "\\") -> string {
     let cs = Array(s)
     var out = ""
     var i = 0

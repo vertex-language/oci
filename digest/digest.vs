@@ -30,7 +30,7 @@ public struct Digest: Equatable, Hashable, CustomStringConvertible {
     }
 
     /// Parses and checks "algorithm:hex".
-    public static func Parse(_ text: string) throws -> Digest {
+    public static func Parse(text: string) throws -> Digest {
         let parts = text.split(separator: ":", maxSplits: 1)
         if parts.count != 2 { throw DigestError.malformed(text) }
         let alg = string(parts[0])
@@ -45,12 +45,12 @@ public struct Digest: Equatable, Hashable, CustomStringConvertible {
     }
 
     /// The SHA-256 digest of `data`.
-    public static func Of(_ data: [uint8]) -> Digest {
+    public static func Of(data: [uint8]) -> Digest {
         Digest(algorithm: "sha256", hex: sha256.ToHex(sha256.Sum256(data)))
     }
 
     /// Checks that `data` is what this digest names.
-    public func Verify(_ data: [uint8]) throws {
+    public func Verify(data: [uint8]) throws {
         let got = Digest.Of(data)
         if got != self {
             throw DigestError.mismatch(expected: description, got: got.description)

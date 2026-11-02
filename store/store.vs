@@ -114,16 +114,16 @@ public final class Store {
     // MARK: Blobs
 
     /// Where a blob is, whether or not it is there.
-    public func BlobPath(_ d: digest.Digest) -> fs.Path {
+    public func BlobPath(d: digest.Digest) -> fs.Path {
         Root / "blobs" / d.Algorithm / d.Hex
     }
 
-    public func HasBlob(_ d: digest.Digest) -> bool {
+    public func HasBlob(d: digest.Digest) -> bool {
         fs.Exists(BlobPath(d))
     }
 
     /// A blob's bytes, checked against its digest.
-    public func ReadBlob(_ d: digest.Digest) throws -> [uint8] {
+    public func ReadBlob(d: digest.Digest) throws -> [uint8] {
         let p = BlobPath(d)
         if !fs.Exists(p) { throw StoreError.notFound(d.description) }
         let bytes = try fs.ReadFile(p)
@@ -133,7 +133,7 @@ public final class Store {
 
     /// Stores `bytes`, returning their digest.
     @discardableResult
-    public func WriteBlob(_ bytes: [uint8]) throws -> digest.Digest {
+    public func WriteBlob(bytes: [uint8]) throws -> digest.Digest {
         let d = digest.Digest.Of(bytes)
         if !HasBlob(d) {
             let tmp = Root / "ingest" / (d.Hex + ".tmp")
@@ -144,13 +144,13 @@ public final class Store {
     }
 
     /// Starts writing a blob too big to hold: see Ingest.
-    public func BeginIngest(_ name: string) throws -> Ingest {
+    public func BeginIngest(name: string) throws -> Ingest {
         let path = Root / "ingest" / name
         return Ingest(store: self, path: path, file: try fs.Create(path))
     }
 
     /// Size of a stored blob.
-    public func BlobSize(_ d: digest.Digest) throws -> int64 {
+    public func BlobSize(d: digest.Digest) throws -> int64 {
         try fs.Stat(BlobPath(d)).Size
     }
 
@@ -160,7 +160,7 @@ public final class Store {
     public var Records: [Record] { records.filter { !$0.Name.isEmpty } }
 
     /// Names `d` as `name`, replacing what the name meant before.
-    public func Tag(_ name: string, _ d: spec.Descriptor) throws {
+    public func Tag(name: string, d: spec.Descriptor) throws {
         let full = Store.canonical(name)
         records = records.filter { $0.Name != full }
         records.append(Record(Name: full, Descriptor: d))
@@ -168,7 +168,7 @@ public final class Store {
     }
 
     /// Forgets a name. The blobs stay until Prune.
-    public func Untag(_ name: string) throws {
+    public func Untag(name: string) throws {
         let full = Store.canonical(name)
         let before = records.count
         records = records.filter { $0.Name != full }
@@ -179,7 +179,7 @@ public final class Store {
     /// The descriptor a name stands for. "alpine", "alpine:3.20" and
     /// "docker.io/library/alpine:3.20" are one name; a digest prefix of
     /// at least 6 hex digits finds an image by its manifest.
-    public func Resolve(_ name: string) -> Record? {
+    public func Resolve(name: string) -> Record? {
         let full = Store.canonical(name)
         for r in records where r.Name == full {
             return r
@@ -193,13 +193,13 @@ public final class Store {
         return nil
     }
 
-    static func canonical(_ name: string) -> string {
+    static func canonical(name: string) -> string {
         (try? reference.Reference.Parse(name))?.description ?? name
     }
 
     /// The image a name stands for, for `platform`: through an index to
     /// the platform's manifest, then its config.
-    public func Image(_ name: string, platform: spec.Platform = spec.Platform.Default) throws -> Image {
+    public func Image(name: string, platform: spec.Platform = spec.Platform.Default) throws -> Image {
         guard let r = Resolve(name) else { throw StoreError.notFound(name) }
         var d = try digest.Digest.Parse(r.Descriptor.Digest)
         var bytes = try ReadBlob(d)
@@ -216,7 +216,7 @@ public final class Store {
         return store.Image(Name: r.Name, ManifestDigest: d, Manifest: manifest, Config: config)
     }
 
-    func isIndex(_ bytes: [uint8]) -> bool {
+    func isIndex(bytes: [uint8]) -> bool {
         guard let v = try? json.Parse(bytes: bytes) else { return false }
         return v["manifests"] != nil
     }
@@ -243,7 +243,7 @@ public final class Store {
     }
 
     /// Adds a blob and everything it refers to.
-    func reach(_ d: string, _ keep: inout Set<string>) throws {
+    func reach(d: string, keep: inout Set<string>) throws {
         guard let dg = try? digest.Digest.Parse(d), HasBlob(dg) else { return }
         if keep.contains(dg.Hex) { return }
         keep.insert(dg.Hex)
@@ -278,7 +278,7 @@ public final class Ingest {
         hash = sha256.New()
     }
 
-    public func Write(_ bytes: [uint8]) throws {
+    public func Write(bytes: [uint8]) throws {
         guard let f = file else { throw StoreError.corrupt("write after commit") }
         try f.Write(bytes)
         hash.Write(bytes)

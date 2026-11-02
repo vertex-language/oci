@@ -45,7 +45,7 @@ Commands:
 """)
 }
 
-func human(_ n: int64) -> string {
+func human(n: int64) -> string {
     let units = ["B", "KB", "MB", "GB", "TB"]
     var v = float64(n)
     var u = 0
@@ -58,7 +58,7 @@ func human(_ n: int64) -> string {
     return "\(tenths / 10).\(tenths % 10) \(units[u])"
 }
 
-func pad(_ s: string, _ n: int) -> string {
+func pad(s: string, n: int) -> string {
     s.count >= n ? s + " " : s + string(repeating: " ", count: n - s.count)
 }
 

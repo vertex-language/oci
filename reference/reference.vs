@@ -35,7 +35,7 @@ public struct Reference: Equatable, Hashable, CustomStringConvertible {
     }
 
     /// Parses `text`, filling in Docker's defaults.
-    public static func Parse(_ text: string) throws -> Reference {
+    public static func Parse(text: string) throws -> Reference {
         if text.isEmpty || text.contains(" ") { throw ReferenceError.invalid(text) }
         var rest = text
         var digest = ""

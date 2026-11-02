@@ -8,7 +8,7 @@ import "fs"
 struct Ignore {
     var rules: [(bool, [string])] = []
 
-    init(_ text: string?) {
+    init(text: string?) {
         guard let t = text else { return }
         for line in t.split(separator: "\n") {
             var p = string(line)
@@ -28,7 +28,7 @@ struct Ignore {
 
     /// Whether `path` (relative to the context) is left out. A path under
     /// an ignored directory is too.
-    func Ignored(_ path: string) -> bool {
+    func Ignored(path: string) -> bool {
         let parts = path.split(separator: "/").map { string($0) }
         var out = false
         for (keep, pattern) in rules {
@@ -47,7 +47,7 @@ struct Ignore {
 
 /// Whether path components match pattern components, `**` matching any
 /// number of them.
-func matchParts(_ pat: [string], _ parts: [string]) -> bool {
+func matchParts(pat: [string], parts: [string]) -> bool {
     if pat.isEmpty { return parts.isEmpty }
     if pat[0] == "**" {
         let rest = Array(pat.dropFirst())
@@ -63,13 +63,13 @@ func matchParts(_ pat: [string], _ parts: [string]) -> bool {
 }
 
 /// A shell glob within one path component: `*`, `?`, `[abc]`.
-public func Glob(_ pattern: string, _ name: string) -> bool {
+public func Glob(pattern: string, name: string) -> bool {
     let p = Array(pattern)
     let n = Array(name)
     return globAt(p, 0, n, 0)
 }
 
-func globAt(_ p: [Character], _ pi: int, _ n: [Character], _ ni: int) -> bool {
+func globAt(p: [Character], pi: int, n: [Character], ni: int) -> bool {
     if pi == p.count { return ni == n.count }
     let c = p[pi]
     if c == "*" {
@@ -96,7 +96,7 @@ func globAt(_ p: [Character], _ pi: int, _ n: [Character], _ ni: int) -> bool {
 
 /// The context paths a COPY source names: itself, or what its glob
 /// matches, minus what .dockerignore leaves out.
-func contextMatches(_ context: string, _ source: string, _ ignore: Ignore) throws -> [string] {
+func contextMatches(context: string, source: string, ignore: Ignore) throws -> [string] {
     var rel = source
     while rel.hasPrefix("/") || rel.hasPrefix("./") { rel = rel.hasPrefix("/") ? string(rel.dropFirst()) : string(rel.dropFirst(2)) }
     while rel.hasSuffix("/") { rel = string(rel.dropLast()) }
@@ -125,8 +125,8 @@ func contextMatches(_ context: string, _ source: string, _ ignore: Ignore) throw
 
 /// Every entry under a context directory, parents first, with its data
 /// (files) or target (symlinks); `rel` is "" for the whole context.
-func walk(_ context: string, _ rel: string, _ ignore: Ignore,
-          _ visit: (string, fs.FileMetadata, [uint8], string) throws -> Void) throws {
+func walk(context: string, rel: string, ignore: Ignore,
+          visit: (string, fs.FileMetadata, [uint8], string) throws -> Void) throws {
     let dir = rel.isEmpty ? fs.Path(context) : fs.Path(context) / rel
     for e in try fs.ReadDir(dir).sorted(by: { $0.Name < $1.Name }) {
         let path = rel.isEmpty ? e.Name : rel + "/" + e.Name

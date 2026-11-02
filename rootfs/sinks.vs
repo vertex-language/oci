@@ -24,7 +24,7 @@ public final class CpioSink: Sink {
         links = plan.LinkCounts
     }
 
-    func typeBits(_ k: Kind) -> uint32 {
+    func typeBits(k: Kind) -> uint32 {
         switch k {
         case .file, .hardlink: return cpio.ModeType.regular
         case .directory: return cpio.ModeType.directory
@@ -35,7 +35,7 @@ public final class CpioSink: Sink {
         }
     }
 
-    public func Add(_ e: Entry, _ data: [uint8]) throws {
+    public func Add(e: Entry, data: [uint8]) throws {
         var body = data
         var ino: uint32 = 0
         var nlink: uint32 = e.Kind == Kind.directory ? 2 : 1
@@ -78,13 +78,13 @@ public final class CpioSink: Sink {
 
     /// Adds a file the image doesn't have -- an /init, a module -- owned
     /// by root.
-    public func AddFile(_ path: string, _ data: [uint8], mode: uint32 = 0o755) throws {
+    public func AddFile(path: string, data: [uint8], mode: uint32 = 0o755) throws {
         try Add(Entry(Path: path, Kind: Kind.file, Mode: mode, Uid: 0, Gid: 0, ModTime: 0,
                       Size: int64(data.count), Linkname: "", DevMajor: 0, DevMinor: 0, Layer: -1), data)
     }
 
     /// Adds a directory, a symlink or a device node the image doesn't have.
-    public func AddEntry(_ e: Entry) throws {
+    public func AddEntry(e: Entry) throws {
         try Add(e, [])
     }
 
@@ -110,7 +110,7 @@ public final class DirSink: Sink {
         try fs.CreateDir(root, all: true)
     }
 
-    public func Add(_ e: Entry, _ data: [uint8]) throws {
+    public func Add(e: Entry, data: [uint8]) throws {
         let p = Root / e.Path
         switch e.Kind {
         case .directory:
